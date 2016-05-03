@@ -1,0 +1,293 @@
+angular.module("simpleNgTable",[]).directive("ngTable", ["$q", function ($q) {
+    return {
+        restrict: "EA",
+        transclude: true,
+        replace:true,
+        scope: {
+            filter: "@",
+            perpage: "@",
+            hasPerpage:"@",
+            perpageArray: "=",
+            pagination: "@",
+            server: "@",
+            ajax: "&",
+            aData:"=",
+            placeholder:"@"
+        },
+        template: "<div class='ng-table-wrapper dataTables_wrapper '>" +
+                    "<div>" +
+                        "<div class='clearfix'>" +
+                             "<div class='col-sm-6'>" +
+                                "<div ng-if='ngTable.hasPerpage' class='dataTables_length'><select ng-change='ngTable.reInitTable()' ng-model='ngTable.perpage' ng-options='o for o in ngTable.perpageArray'></select></div>" +
+                             "</div>" +
+                             "<div class='col-sm-6'>"+
+                                "<div ng-if='ngTable.filter' class='dataTables_filter'><input placeholder='{{ngTable.placeholder}}' type='text' ng-model='ngTable.filterText'/></div>" +
+                             "</div>" +
+                        "</div>"+
+                    "</div>" +
+                    "<div class='ng-table-loading' ng-if='ngTable.loading'></div>" +
+                    "<table class='no-checkbox dataTable'></table>" +
+                    "<div class='clearfix' ng-if='ngTable.pagination'>" +
+                        "<div class='col-sm-6 dataTables_info'>Showing 1 to 10 of 1,075</div>" +
+                        "<div class='col-sm-6'>"+
+                            '<div class="dataTables_paginate paging_full_numbers">' +
+			                    '<button tabindex="0" type="button" ng-click="ngTable.gotoFirstPage()" class="first paginate_button" ng-class="ngTable.current== 1?\'paginate_button_disabled\':\'\'">First</button>' +
+			                    '<button tabindex="0" type="button"  ng-click="ngTable.gotoPreviousPage()" class="previous paginate_button" ng-class="ngTable.current== 1?\'paginate_button_disabled\':\'\'">Previous</button>' +
+			                    '<span>'+
+				                    '<button type="button" tabindex="0" type="button" ng-click="ngTable.gotoPage(item)" ng-repeat="item in ngTable.getPageNumbers()" ng-disabled="ngTable.current == item" ng-class="ngTable.current == item?\'paginate_active\':\'\'" class="paginate_button">{{item}}</button>' +
+			                    '</span>'+
+			                    '<button tabindex="0" type="button" class="next paginate_button" ng-click="ngTable.gotoNextPage()" ng-class="ngTable.current== ngTable.pages?\'paginate_button_disabled\':\'\'">Next</button>' +
+			                    '<button tabindex="0" type="button" class="last paginate_button" ng-click="ngTable.gotoLastPage()" ng-class="ngTable.current== ngTable.pages?\'paginate_button_disabled\':\'\'">Last</button>' +
+		                    '</div>'+
+                        
+                        "</div>" +
+                    "</div>" +
+                    "<div ng-if='!ngTable.pagination'>Total 1,075</div>" +
+                  "</div>",
+        link:function(scope,element,attr,control,transclude)
+        {
+            scope.$ngTable = scope.$parent;
+
+            scope.ngTable = {
+                hasPerpage: true,
+                lastRequest:(new Date()).getTime(),
+                pagination: true,
+                pages: 0,
+                current:1,
+                perpage: "10",
+                perpageArray:["10","20","30","50","100","all"],
+                loading: false,
+                filter:true,
+                filterText: "",
+                server: false,
+                aData:[],
+                ajax:function(param,resolve)
+                {
+
+                },
+                placeholder: "Search",
+                reInitTable:function(){
+
+                    scope.ngTable.current = 1;
+                    if (scope.ngTable.pagination && scope.ngTable.perpage != "all")
+                    {
+                        if (scope.ngTable.server) {
+
+                            scope.ngTable.pages = Math.ceil(scope.ngTable.aData.length / parseInt(scope.ngTable.perpage));
+                        }
+                        else {
+                            scope.ngTable.pages = Math.ceil(scope.ngTable.aData.total / parseInt(scope.ngTable.perpage));
+                        }
+                    }
+                    scope.ngTable.redrawTable();
+
+
+                },
+                getPageNumbers:function()
+                {
+                    if (scope.ngTable.aData.length == 0) {
+                        return [];
+                    }
+                    if (scope.ngTable.pagination && (scope.ngTable.perpage == "-1" || scope.ngTable.perpage =="all"))
+                        return [];
+
+                    if (!scope.ngTable.pagination)
+                        return [];
+
+                    //get the total number of pages
+                    if (scope.ngTable.server) {
+
+                        scope.ngTable.pages = Math.ceil(scope.ngTable.aData.length / parseInt(scope.ngTable.perpage));
+                    }
+                    else {
+                        scope.ngTable.pages = Math.ceil(scope.ngTable.aData.total / parseInt(scope.ngTable.perpage));
+                    }
+
+                    var startIndex = -5;
+                    var paggingArray = [];
+                    var currentPage = scope.ngTable.current;
+                    while(paggingArray.length != 5)
+                    {
+                        var calculatedPage = currentPage + startIndex;
+                        if (calculatedPage > scope.ngTable.pages) break;
+
+                        if (calculatedPage > 0)
+                        {
+                            paggingArray.push(calculatedPage);
+                        }
+                        startIndex++;
+                    }
+                    return paggingArray;
+
+
+                },
+                redrawTable:function(){
+
+                   
+                    if(scope.ngTable.server)
+                    {
+                        var deferred = $q.defer();
+
+                        scope.ngTable.lastRequest =(new Date()).getTime();
+
+                        var perpage = "-1";
+                        var startIndex = "0";
+                        var filterText = "";
+                        if (scope.ngTable.pagination)
+                        {
+                            perpage = scope.ngTable.perpage;
+                        }
+
+                        if (perpage != "-1" && perpage != "all")
+                        {
+                            startIndex = (scope.ngTable.current - 1) * perpage;
+                        }
+
+                        if (scope.ngTable.filter)
+                        {
+                            filterText = scope.ngTable.filterText;
+                        }
+
+                        var param = {
+                            echo: scope.ngTable.lastRequest,
+                            perpage: perpage,
+                            startIndex: startIndex,
+                            search: filterText
+                        }
+                        scope.ngTable.loading = true;
+                        scope.ngTable.ajax(param, deferred);
+
+                        deferred.then(function (responseData) {
+                            //success of the ajax
+
+                            // data format
+                                // echo 
+                                // total
+                                // startIndex
+                            // data is a array  it is passes to your ng repeat
+                            if (responseData.echo == scope.ngTable.lastRequest)
+                            {
+                                scope.ngTable.loading = false;
+
+                                angular.copy(responseData.data, scope.tableData);
+
+                                scope.ngTable.aData = responseData;
+
+                            }
+                            
+
+                        }, function () {
+                            scope.ngTable.loading = false;
+                            scope.tableData = [];
+                            scope.ngTable.aData = [];
+                        });
+
+                    }
+                    else
+                    {
+                        var perpage = "-1";
+                        var startIndex = "0";
+                        scope.tableData = [];
+                        if (scope.ngTable.pagination) {
+                            perpage = scope.ngTable.perpage;
+                        }
+
+                        if (perpage != "all" && perpage != "-1") {
+                            startIndex = (scope.ngTable.current - 1) * parseInt(perpage);
+                            var endIndex = startIndex + parseInt(perpage);
+
+                            for (var i = startIndex; i < endIndex; i++)
+                            {
+                                if(scope.ngTable.aData[i] != null)
+                                {
+                                    scope.tableData.push(scope.ngTable.aData[i]);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            scope.tableData = scope.ngTable.aData;
+                        }
+                    }
+
+
+                },
+                gotoFirstPage:function()
+                {
+                    scope.ngTable.gotoPage(1);
+                },
+                gotoPreviousPage: function () {
+                    if(scope.ngTable.current != 1)
+                    {
+                        scope.ngTable.current--;
+                        scope.ngTable.redrawTable();
+                    }
+                },
+                gotoPage: function (page) {
+                    scope.ngTable.current = page;
+                    scope.ngTable.redrawTable();
+                },
+                gotoNextPage: function () {
+                    if((scope.ngTable.current) < scope.ngTable.pages)
+                    {
+                        scope.ngTable.current++;
+                        scope.ngTable.redrawTable();
+                    }
+                },
+                gotoLastPage: function () {
+                    scope.ngTable.gotoPage(scope.ngTable.pages);
+                }
+
+            }
+            if (angular.isDefined(scope.filter))
+            {
+                scope.ngTable.filter = scope.filter;
+            }
+            if (angular.isDefined(scope.perpage)) {
+                scope.ngTable.perpage = scope.perpage;
+            }
+            if (angular.isDefined(scope.hasPerpage)) {
+                scope.ngTable.hasPerpage = scope.hasPerpage;
+            }
+            if (angular.isDefined(scope.perpageArray)) {
+                scope.ngTable.perpageArray = scope.perpageArray;
+            }
+            if (angular.isDefined(scope.pagination)) {
+                scope.ngTable.pagination = scope.pagination;
+            }
+
+
+
+            if (angular.isDefined(scope.server)) {
+                scope.ngTable.server = scope.server;
+            }
+
+            if (angular.isDefined(scope.ajax) && scope.ngTable.server) {
+                scope.ngTable.ajax = scope.ajax;
+            }
+            else
+            {
+                if (angular.isDefined(scope.aData))
+                    scope.ngTable.aData = scope.aData;
+            }
+            if (angular.isDefined(scope.placeholder)) {
+                scope.ngTable.placeholder = scope.placeholder;
+            }
+
+            if (!scope.ngTable.pagination)
+            {
+                scope.ngTable.hasPerpage = false;
+                scope.ngTable.perpage = "all";
+            }
+            scope.tableData = [];
+
+            transclude(scope, function (clone, scope) {
+
+                element.find("table").append(clone);
+            });
+
+            scope.ngTable.redrawTable();
+            
+        }
+    }
+}])
