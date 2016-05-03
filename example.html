@@ -1,0 +1,14 @@
+<table ng-table a-data="data">
+	<thead>
+		<tr>
+			<th>
+				Name
+			</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr ng-repeat="item in tableData">
+			<td>{{item.name}} {{$ngTable.test}}</td>
+		</tr>
+	</tbody>
+</table>
