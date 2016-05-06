@@ -1,15 +1,27 @@
-<table ng-table a-data="data">
-	<thead>
-		<tr>
-			<th>
-				Name
-			</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr ng-repeat="item in tableData">
-			<td>{{item.name}} {{$ngTable.test}}</td>
-		</tr>
-	</tbody>
-</table>
-<!-- -->
+ <div>
+        Experiment - {{datatableParam.entireTableSelected}} -- {{datatableParam.getSelectedRow()}}
+        <table ng-table="datatableParam">
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" ng-table-main-checkbox="" />
+                    </th>
+                    <th ng-table-sortable="name" ng-table-default-sortable="ASC" ng-table-sort-prop="name">
+                        Name
+                    </th>
+                    <th ng-table-sortable="name" ng-table-default-sortable="ASC" ng-table-sort-prop="name">
+                        Name2
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="item in $$tableData">
+                    <td>
+                        <input type="checkbox" ng-table-checkbox="item"/>
+                    </td>
+                    <td>{{item.name}} {{test}}</td>
+                    <td>{{item.name}} {{test}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>

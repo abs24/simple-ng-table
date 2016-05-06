@@ -1,118 +1,156 @@
-angular.module("simpleNgTable",[]).directive("ngTable", ["$q", function ($q) {
+angular.module("simpleNgTable",[]).directive("ngTable", ["$q", "$parse","$filter", function ($q, $parse,$filter) {
+
     return {
         restrict: "EA",
         transclude: true,
-        replace:true,
-        scope: {
-            filter: "@",
-            perpage: "@",
-            hasPerpage:"@",
-            perpageArray: "=",
-            pagination: "@",
-            server: "@",
-            ajax: "&",
-            aData:"=",
-            placeholder:"@"
-        },
+        replace: true,
+        scope: true,
         template: "<div class='ng-table-wrapper dataTables_wrapper '>" +
                     "<div>" +
                         "<div class='clearfix'>" +
                              "<div class='col-sm-6'>" +
-                                "<div ng-if='ngTable.hasPerpage' class='dataTables_length'><select ng-change='ngTable.reInitTable()' ng-model='ngTable.perpage' ng-options='o for o in ngTable.perpageArray'></select></div>" +
+                                "<div ng-if='$$ngTable.hasPerpage' class='dataTables_length'><select ng-change='$$ngTable.reInitTable()' ng-model='$$ngTable.perpage' ng-options='o for o in $$ngTable.perpageArray'></select></div>" +
                              "</div>" +
-                             "<div class='col-sm-6'>"+
-                                "<div ng-if='ngTable.filter' class='dataTables_filter'><input placeholder='{{ngTable.placeholder}}' type='text' ng-model='ngTable.filterText'/></div>" +
+                             "<div class='col-sm-6'>" +
+                                "<div ng-if='$$ngTable.filter' class='dataTables_filter'><input placeholder='{{$$ngTable.placeholder}}' type='text' ng-model='$$ngTable.filterText'/></div>" +
                              "</div>" +
-                        "</div>"+
-                    "</div>" +
-                    "<div class='ng-table-loading' ng-if='ngTable.loading'></div>" +
-                    "<table class='no-checkbox dataTable'></table>" +
-                    "<div class='clearfix' ng-if='ngTable.pagination'>" +
-                        "<div class='col-sm-6 dataTables_info'>Showing 1 to 10 of 1,075</div>" +
-                        "<div class='col-sm-6'>"+
-                            '<div class="dataTables_paginate paging_full_numbers">' +
-			                    '<button tabindex="0" type="button" ng-click="ngTable.gotoFirstPage()" class="first paginate_button" ng-class="ngTable.current== 1?\'paginate_button_disabled\':\'\'">First</button>' +
-			                    '<button tabindex="0" type="button"  ng-click="ngTable.gotoPreviousPage()" class="previous paginate_button" ng-class="ngTable.current== 1?\'paginate_button_disabled\':\'\'">Previous</button>' +
-			                    '<span>'+
-				                    '<button type="button" tabindex="0" type="button" ng-click="ngTable.gotoPage(item)" ng-repeat="item in ngTable.getPageNumbers()" ng-disabled="ngTable.current == item" ng-class="ngTable.current == item?\'paginate_active\':\'\'" class="paginate_button">{{item}}</button>' +
-			                    '</span>'+
-			                    '<button tabindex="0" type="button" class="next paginate_button" ng-click="ngTable.gotoNextPage()" ng-class="ngTable.current== ngTable.pages?\'paginate_button_disabled\':\'\'">Next</button>' +
-			                    '<button tabindex="0" type="button" class="last paginate_button" ng-click="ngTable.gotoLastPage()" ng-class="ngTable.current== ngTable.pages?\'paginate_button_disabled\':\'\'">Last</button>' +
-		                    '</div>'+
-                        
                         "</div>" +
                     "</div>" +
-                    "<div ng-if='!ngTable.pagination'>Total 1,075</div>" +
-                  "</div>",
-        link:function(scope,element,attr,control,transclude)
-        {
-            scope.$ngTable = scope.$parent;
+                    "<div class='ng-table-loading' ng-if='$$ngTable.loading'></div>" +
+                    "<div class='ng-table-select text-center ' ng-if='$$ngTable.isTableSelectAllVisible()'><div class='alert alert-info'><span class='cursor_hand' ng-if='$$ngTable.tableSelected' ng-click='$$ngTable.clearTableCheckbox()' ><i class='fa fa-times-circle-o' aria-hidden='true'></i> clear all {{$$ngTable.getTotalRecord()}} selection</span><span class='cursor_hand' ng-click='$$ngTable.selectAllTable()' ng-if='!$$ngTable.tableSelected' > <i class='fa fa-check-square-o' aria-hidden='true'></i> select all {{$$ngTable.getTotalRecord()}} entries </span></div></div>" +
+                    "<table class='no-checkbox dataTable'></table>" +
+                    "<div class='clearfix' ng-if='$$ngTable.pagination'>" +
+                        "<div class='col-sm-6 dataTables_info'>Showing {{$$ngTable.getRecordStart()}} to {{$$ngTable.getRecordEnd()}} of {{$$ngTable.getTotalRecord()}} entries</div>" +
+                        "<div class='col-sm-6'>" +
+                            '<div class="dataTables_paginate paging_full_numbers">' +
+			                    '<button tabindex="0" type="button" ng-click="$$ngTable.gotoFirstPage()" class="first paginate_button" ng-class="$$ngTable.current== 1?\'paginate_button_disabled\':\'\'">First</button>' +
+			                    '<button tabindex="0" type="button"  ng-click="$$ngTable.gotoPreviousPage()" class="previous paginate_button" ng-class="$$ngTable.current== 1?\'paginate_button_disabled\':\'\'">Previous</button>' +
+			                    '<span>' +
+				                    '<button type="button" tabindex="0" type="button" ng-click="$$ngTable.gotoPage(item)" ng-repeat="item in $$ngTable.getPageNumbers()" ng-disabled="$$ngTable.current == item" ng-class="$$ngTable.current == item?\'paginate_active\':\'\'" class="paginate_button">{{item}}</button>' +
+			                    '</span>' +
+			                    '<button tabindex="0" type="button" class="next paginate_button" ng-click="$$ngTable.gotoNextPage()" ng-class="$$ngTable.current== $$ngTable.pages?\'paginate_button_disabled\':\'\'">Next</button>' +
+			                    '<button tabindex="0" type="button" class="last paginate_button" ng-click="$$ngTable.gotoLastPage()" ng-class="$$ngTable.current== $$ngTable.pages?\'paginate_button_disabled\':\'\'">Last</button>' +
+		                    '</div>' +
 
-            scope.ngTable = {
+                        "</div>" +
+                    "</div>" +
+                    "<div ng-if='!$$ngTable.pagination'>Total 1,075</div>" +
+                  "</div>",
+        link: function (scope, element, attr, control, transclude) {
+
+
+            scope.$$ngTable = {
                 hasPerpage: true,
-                lastRequest:(new Date()).getTime(),
+                lastRequest: (new Date()).getTime(),
                 pagination: true,
                 pages: 0,
-                current:1,
+                current: 1,
                 perpage: "10",
-                perpageArray:["10","20","30","50","100","all"],
+                perpageArray: ["10", "20", "30", "50", "100", "all"],
                 loading: false,
-                filter:true,
+                filter: true,
                 filterText: "",
                 server: false,
-                aData:[],
-                ajax:function(param,resolve)
-                {
+                selectAll: false,
+                tableSelected:false,
+                aData: [],
+                ajax: function (param, resolve) {
 
                 },
                 placeholder: "Search",
-                reInitTable:function(){
+                reInitTable: function () {
 
-                    scope.ngTable.current = 1;
-                    if (scope.ngTable.pagination && scope.ngTable.perpage != "all")
-                    {
-                        if (scope.ngTable.server) {
+                    scope.$$ngTable.current = 1;
+                    if (scope.$$ngTable.pagination && scope.$$ngTable.perpage != "all") {
+                        if (scope.$$ngTable.server) {
 
-                            scope.ngTable.pages = Math.ceil(scope.ngTable.aData.length / parseInt(scope.ngTable.perpage));
+                            scope.$$ngTable.pages = Math.ceil(scope.$$ngTable.aData.length / parseInt(scope.$$ngTable.perpage));
                         }
                         else {
-                            scope.ngTable.pages = Math.ceil(scope.ngTable.aData.total / parseInt(scope.ngTable.perpage));
+                            scope.$$ngTable.pages = Math.ceil(scope.$$ngTable.aData.total / parseInt(scope.$$ngTable.perpage));
                         }
                     }
-                    scope.ngTable.redrawTable();
+                    scope.$$ngTable.redrawTable();
 
 
                 },
-                getPageNumbers:function()
+                getSelectedRow:function()
                 {
-                    if (scope.ngTable.aData.length == 0) {
+                    var selected = [];
+                    if (scope.$$ngTable.server) {
+                        selected = $filter('filter')(scope.$$tableData, { checked: true }, true);
+                    }
+                    else {
+                        selected = $filter('filter')(scope.$$ngTable.aData, { checked: true }, true);
+                    }
+                    return selected;
+                },
+                getRecordStart: function () {
+                    if (scope.$$ngTable.perpage != "-1" && scope.$$ngTable.perpage != "all") {
+                        startIndex = (scope.$$ngTable.current - 1) * parseInt(scope.$$ngTable.perpage);
+                        return startIndex + 1;
+                    }
+                    else {
+                        if (scope.$$ngTable.getTotalRecord() != 0)
+                            return "1";
+                        else
+                            return "0";
+                    }
+                },
+                getRecordEnd: function () {
+                    var total = scope.$$ngTable.getTotalRecord();
+                    if (scope.$$ngTable.perpage != "-1" && scope.$$ngTable.perpage != "all") {
+                        endIndex = (scope.$$ngTable.current) * parseInt(scope.$$ngTable.perpage);
+                        if (endIndex > total) {
+                            return total;
+                        }
+                        return endIndex;
+                    }
+                    else {
+
+                        if (total != 0)
+                            return total;
+                        else
+                            return "0";
+                    }
+
+
+                },
+                getTotalRecord: function () {
+                    if (scope.$$ngTable.server) {
+                        return scope.$$ngTable.aData.total;
+                    }
+                    else {
+                        return scope.$$ngTable.aData.length;
+                    }
+                },
+                getPageNumbers: function () {
+                    if (scope.$$ngTable.aData.length == 0) {
                         return [];
                     }
-                    if (scope.ngTable.pagination && (scope.ngTable.perpage == "-1" || scope.ngTable.perpage =="all"))
+                    if (scope.$$ngTable.pagination && (scope.$$ngTable.perpage == "-1" || scope.$$ngTable.perpage == "all"))
                         return [];
 
-                    if (!scope.ngTable.pagination)
+                    if (!scope.$$ngTable.pagination)
                         return [];
 
                     //get the total number of pages
-                    if (scope.ngTable.server) {
+                    if (scope.$$ngTable.server) {
 
-                        scope.ngTable.pages = Math.ceil(scope.ngTable.aData.length / parseInt(scope.ngTable.perpage));
+                        scope.$$ngTable.pages = Math.ceil(scope.$$ngTable.aData.total / parseInt(scope.$$ngTable.perpage));
                     }
                     else {
-                        scope.ngTable.pages = Math.ceil(scope.ngTable.aData.total / parseInt(scope.ngTable.perpage));
+                        scope.$$ngTable.pages = Math.ceil(scope.$$ngTable.aData.length / parseInt(scope.$$ngTable.perpage));
                     }
 
                     var startIndex = -5;
                     var paggingArray = [];
-                    var currentPage = scope.ngTable.current;
-                    while(paggingArray.length != 5)
-                    {
+                    var currentPage = scope.$$ngTable.current;
+                    while (paggingArray.length != 5) {
                         var calculatedPage = currentPage + startIndex;
-                        if (calculatedPage > scope.ngTable.pages) break;
+                        if (calculatedPage > scope.$$ngTable.pages) break;
 
-                        if (calculatedPage > 0)
-                        {
+                        if (calculatedPage > 0) {
                             paggingArray.push(calculatedPage);
                         }
                         startIndex++;
@@ -121,174 +159,507 @@ angular.module("simpleNgTable",[]).directive("ngTable", ["$q", function ($q) {
 
 
                 },
-                redrawTable:function(){
+                redrawTable: function () {
 
-                   
-                    if(scope.ngTable.server)
+                    if (!scope.$$ngTable.tableSelected)
                     {
+                        scope.$$ngTable.toggleMainCheckbox(false);
+                    }
+                    
+
+                    if (scope.$$ngTable.server) {
                         var deferred = $q.defer();
 
-                        scope.ngTable.lastRequest =(new Date()).getTime();
+                        scope.$$ngTable.lastRequest = (new Date()).getTime();
 
                         var perpage = "-1";
                         var startIndex = "0";
                         var filterText = "";
-                        if (scope.ngTable.pagination)
-                        {
-                            perpage = scope.ngTable.perpage;
+                        if (scope.$$ngTable.pagination) {
+                            perpage = scope.$$ngTable.perpage;
                         }
 
-                        if (perpage != "-1" && perpage != "all")
-                        {
-                            startIndex = (scope.ngTable.current - 1) * perpage;
+                        if (perpage != "-1" && perpage != "all") {
+                            startIndex = (scope.$$ngTable.current - 1) * perpage;
                         }
 
-                        if (scope.ngTable.filter)
+                        if (scope.$$ngTable.filter) {
+                            filterText = scope.$$ngTable.filterText;
+                        }
+                        var sortColumn = null;
+                        var sortOrder = null;
+                        if (scope.$$ngTable.currentSortedCol != null)
                         {
-                            filterText = scope.ngTable.filterText;
+                            sortOrder = scope.$$ngTable.currentSortedOrder;
+                            sortColumn = scope.$$ngTable.columns[sortOrder].sortParam;
                         }
 
                         var param = {
-                            echo: scope.ngTable.lastRequest,
+                            echo: scope.$$ngTable.lastRequest,
                             perpage: perpage,
                             startIndex: startIndex,
-                            search: filterText
+                            search: filterText,
+                            sortOrder: sortOrder,
+                            sortColumn: sortColumn
                         }
-                        scope.ngTable.loading = true;
-                        scope.ngTable.ajax(param, deferred);
+                        scope.$$ngTable.loading = true;
+                        scope.$$ngTable.ajax(param, deferred);
 
                         deferred.then(function (responseData) {
                             //success of the ajax
 
                             // data format
-                                // echo 
-                                // total
-                                // startIndex
+                            // echo 
+                            // total
+                            // startIndex
                             // data is a array  it is passes to your ng repeat
-                            if (responseData.echo == scope.ngTable.lastRequest)
-                            {
-                                scope.ngTable.loading = false;
+                            if (responseData.echo == scope.$$ngTable.lastRequest) {
+                                scope.$$ngTable.loading = false;
 
-                                angular.copy(responseData.data, scope.tableData);
+                                angular.copy(responseData.data, scope.$$tableData);
 
-                                scope.ngTable.aData = responseData;
+                                scope.$$ngTable.aData = responseData;
 
                             }
-                            
+
 
                         }, function () {
-                            scope.ngTable.loading = false;
-                            scope.tableData = [];
-                            scope.ngTable.aData = [];
+                            scope.$$ngTable.loading = false;
+                            scope.$$tableData = [];
+                            scope.$$ngTable.aData = [];
                         });
+
+                    }
+                    else {
+                        var perpage = "-1";
+                        var startIndex = "0";
+                        scope.$$tableData = [];
+                        if (scope.$$ngTable.pagination) {
+                            perpage = scope.$$ngTable.perpage;
+                        }
+
+                        if (perpage != "all" && perpage != "-1") {
+                            startIndex = (scope.$$ngTable.current - 1) * parseInt(perpage);
+                            var endIndex = startIndex + parseInt(perpage);
+
+                            for (var i = startIndex; i < endIndex; i++) {
+                                if (scope.$$ngTable.aData[i] != null) {
+                                    scope.$$tableData.push(scope.$$ngTable.aData[i]);
+                                }
+                            }
+                        }
+                        else {
+                            scope.$$tableData = scope.$$ngTable.aData;
+                        }
+                    }
+
+
+                },
+                gotoFirstPage: function () {
+                    scope.$$ngTable.gotoPage(1);
+                },
+                gotoPreviousPage: function () {
+                    if (scope.$$ngTable.current != 1) {
+                        scope.$$ngTable.current--;
+                        scope.$$ngTable.redrawTable();
+                    }
+                },
+                gotoPage: function (page) {
+                    scope.$$ngTable.current = page;
+                    scope.$$ngTable.redrawTable();
+                },
+                gotoNextPage: function () {
+                    if ((scope.$$ngTable.current) < scope.$$ngTable.pages) {
+                        scope.$$ngTable.current++;
+                        scope.$$ngTable.redrawTable();
+                    }
+                },
+                gotoLastPage: function () {
+                    scope.$$ngTable.gotoPage(scope.$$ngTable.pages);
+                },
+                toggleCheckbox:function()
+                {
+                    var total = $filter('filter')(scope.$$tableData, function (item) {
+                        if (item.checked == null || item.checked == true)
+                            return true;
+                        else
+                            return false;
+
+                    }, true);
+                    
+                    if (total.length == scope.$$tableData.length)
+                        scope.$$ngTable.selectAll = true;
+                    else
+                        scope.$$ngTable.selectAll = false;
+
+
+                    if (scope.$$ngTable.tableSelected) {
+
+                        scope.$$ngTable.tableSelected = false;
+                        //no need to worry about the server side congig but for array given we need to unselect all the items that are not in the current page 
+                        var total = $filter('filter')(scope.$$ngTable.aData, function (item) {
+                            if (item.checked == null || item.checked == !scope.$$ngTable.selectAll)
+                                return true;
+                            else
+                                return false;
+
+                        }, true);
+                        for (var i = 0; i < total.length; i++) {
+                            if (scope.$$tableData.indexOf(total[i]) == -1)
+                                total[i].checked = false;
+                        }
+                    }
+
+                },
+                toggleMainCheckbox: function (checked) {
+                    if (checked == null)
+                        scope.$$ngTable.selectAll = !scope.$$ngTable.selectAll;
+                    else
+                        scope.$$ngTable.selectAll = checked;
+
+                    var total = [];
+                    if (scope.$$ngTable.server)
+                    {
+                        total = $filter('filter')(scope.$$tableData, function (item) {
+                            if (item.checked == null || item.checked == !scope.$$ngTable.selectAll)
+                                return true;
+                            else
+                                return false;
+
+                        }, true);
+                    }
+                    else
+                    {
+                        total = $filter('filter')(scope.$$ngTable.aData, function (item) {
+                            if (item.checked == null || item.checked == !scope.$$ngTable.selectAll)
+                                return true;
+                            else
+                                return false;
+
+                        }, true);
+                    }
+                    for(var i=0;i<total.length;i++)
+                    {
+                        if (scope.$$tableData.indexOf(total[i]) != -1)
+                            total[i].checked = scope.$$ngTable.selectAll;
+                        else
+                            total[i].checked = false;
+                    }
+                    if (scope.$$ngTable.tableSelected) scope.$$ngTable.tableSelected = false;
+                },
+                selectAllTable:function()
+                {
+                    scope.$$ngTable.tableSelected = true;
+                    if (!scope.$$ngTable.server) {
+                        var notSelected = $filter('filter')(scope.$$ngTable.aData, function (item) {
+                            if (item.checked == null || item.checked == false)
+                                return true;
+                            else
+                                return false;
+
+                        }, true);
+
+                        for(var i=0;i<notSelected.length;i++)
+                        {
+                            notSelected[i].checked = true;
+                        }
+                    }
+
+                },
+                clearTableCheckbox:function()
+                {
+                    scope.$$ngTable.toggleMainCheckbox(false);
+                },
+                isTableSelectAllVisible:function()
+                {
+                    if (scope.$$ngTable.selectAll) {
+                        if (scope.$$ngTable.getTotalRecord() != scope.$$tableData.length)
+                            return true;
+                        else
+                            return false;
+                    }
+                    else
+                        return false;
+                    
+                },
+                toggleSorting:function(trElement)
+                {
+                    var col = trElement.attr("ng-table-col");
+                    if (scope.$$ngTable.currentSortedCol == col)
+                    {
+                        if (scope.$$ngTable.currentSortedOrder == "DESC") scope.$$ngTable.currentSortedOrder = "ASC";
+                        else scope.$$ngTable.currentSortedOrder = "DESC";
 
                     }
                     else
                     {
-                        var perpage = "-1";
-                        var startIndex = "0";
-                        scope.tableData = [];
-                        if (scope.ngTable.pagination) {
-                            perpage = scope.ngTable.perpage;
-                        }
+                        scope.$$ngTable.currentSortedCol = col;
+                        scope.$$ngTable.currentSortedOrder = "DESC";
+                    }
+                    element.find("th").removeClass("sortable-asc sortable-desc");
+                    trElement.removeClass("sortable-asc sortable-desc").addClass("sortable-" + scope.$$ngTable.currentSortedOrder.toLowerCase());
+                    scope.$$ngTable.sort();
+                },
+                sort:function()
+                {
+                    if (!scope.$$ngTable.server) {
+                        scope.$$ngTable.aData = $filter('orderBy')(scope.$$ngTable.aData, scope.$$ngTable.columns[scope.$$ngTable.currentSortedCol].sort, (scope.$$ngTable.currentSortedOrder == "ASC" ? false : true));
+                    }
+                    scope.$$ngTable.redrawTable();
+                }
+            }
 
-                        if (perpage != "all" && perpage != "-1") {
-                            startIndex = (scope.ngTable.current - 1) * parseInt(perpage);
-                            var endIndex = startIndex + parseInt(perpage);
 
-                            for (var i = startIndex; i < endIndex; i++)
+            transclude(scope, function (clone, scope) {
+                console.log("transclude called");
+                element.find("table").append(clone);
+                //calculate the colums
+                scope.$$ngTable.columns = [];
+                var isDefaultSortingSpecified = false;
+
+                element.find("table th").each(function () {
+                    var col = angular.element(this);
+                    var sortable = angular.isDefined(col.attr("ng-table-sortable"));
+                    var sortParam;
+                    var sortProperty;
+                    if(sortable)
+                    {
+                        sortParam = col.attr("ng-table-sortable");
+                        col.addClass("sortable");
+                        col.append('<span class="sorting_icon"></span>');
+                        col.attr("ng-table-col", scope.$$ngTable.columns.length);
+
+                        
+                    }
+                    if(sortParam == null || sortParam == "")
+                    {
+                        sortParam = scope.$$ngTable.columns.length;
+                    }
+                    if(sortable)
+                    {
+                        if(angular.isDefined(col.attr("ng-table-sort-prop")))
+                        {
+                            sortProperty = $parse(col.attr("ng-table-sort-prop"))(scope);
+                            if(sortProperty == null || typeof sortProperty == "undefined")
                             {
-                                if(scope.ngTable.aData[i] != null)
-                                {
-                                    scope.tableData.push(scope.ngTable.aData[i]);
-                                }
+                                sortProperty = col.attr("ng-table-sort-prop");
                             }
+
                         }
                         else
                         {
-                            scope.tableData = scope.ngTable.aData;
+                            console.log("you need to specify sort property");
+                            throw Error("sort propery not specified");
                         }
                     }
+                   
 
+                    if (!isDefaultSortingSpecified) {
+                        var isDefaultSort = angular.isDefined(col.attr("ng-table-default-sortable"));
+                       
 
-                },
-                gotoFirstPage:function()
-                {
-                    scope.ngTable.gotoPage(1);
-                },
-                gotoPreviousPage: function () {
-                    if(scope.ngTable.current != 1)
-                    {
-                        scope.ngTable.current--;
-                        scope.ngTable.redrawTable();
+                        if (isDefaultSort) {
+                            isDefaultSortingSpecified = true;
+                            scope.$$ngTable.defaultSortOrder = col.attr("ng-table-default-sortable");
+                            scope.$$ngTable.defaultSort = scope.$$ngTable.columns.length;
+                            scope.$$ngTable.currentSortedCol = scope.$$ngTable.columns.length;
+
+                            if (scope.$$ngTable.defaultSortOrder == null || scope.$$ngTable.defaultSortOrder == "" || (scope.$$ngTable.defaultSortOrder != "ASC" && scope.$$ngTable.defaultSortOrder != "DESC")) {
+                                scope.$$ngTable.defaultSortOrder = "DESC";
+                                col.addClass("sortable-desc");
+                                scope.$$ngTable.currentSortedOrder = "DESC";
+                            }
+                            else
+                            {
+                                col.addClass("sortable-" + scope.$$ngTable.defaultSortOrder.toLowerCase());
+                                scope.$$ngTable.currentSortedOrder = scope.$$ngTable.defaultSortOrder;
+                            }
+                        }
                     }
-                },
-                gotoPage: function (page) {
-                    scope.ngTable.current = page;
-                    scope.ngTable.redrawTable();
-                },
-                gotoNextPage: function () {
-                    if((scope.ngTable.current) < scope.ngTable.pages)
-                    {
-                        scope.ngTable.current++;
-                        scope.ngTable.redrawTable();
-                    }
-                },
-                gotoLastPage: function () {
-                    scope.ngTable.gotoPage(scope.ngTable.pages);
+                   
+
+                    scope.$$ngTable.columns.push({ element: col, sortable: sortable, sortParam: sortParam, sort: sortProperty });
+
+                });
+
+            });
+            var originalOptionGetter = $parse(attr.ngTable);
+
+            scope.$watch(originalOptionGetter, function (options) {
+                console.log("watch called");
+                if (angular.isUndefined(options)) {
+                    return;
+                }
+                scope.$$ngTableOptions = options;
+                if (angular.isDefined(scope.$$ngTableOptions.filter)) {
+                    scope.$$ngTable.filter = scope.$$ngTableOptions.filter;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.perpage)) {
+                    scope.$$ngTable.perpage = scope.$$ngTableOptions.perpage;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.hasPerpage)) {
+                    scope.$$ngTable.hasPerpage = scope.$$ngTableOptions.hasPerpage;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.perpageArray)) {
+                    scope.$$ngTable.perpageArray = scope.$$ngTableOptions.perpageArray;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.pagination)) {
+                    scope.$$ngTable.pagination = scope.$$ngTableOptions.pagination;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.server)) {
+                    scope.$$ngTable.server = scope.$$ngTableOptions.server;
                 }
 
-            }
-            if (angular.isDefined(scope.filter))
-            {
-                scope.ngTable.filter = scope.filter;
-            }
-            if (angular.isDefined(scope.perpage)) {
-                scope.ngTable.perpage = scope.perpage;
-            }
-            if (angular.isDefined(scope.hasPerpage)) {
-                scope.ngTable.hasPerpage = scope.hasPerpage;
-            }
-            if (angular.isDefined(scope.perpageArray)) {
-                scope.ngTable.perpageArray = scope.perpageArray;
-            }
-            if (angular.isDefined(scope.pagination)) {
-                scope.ngTable.pagination = scope.pagination;
-            }
+                if (angular.isDefined(scope.$$ngTableOptions.ajax) && scope.$$ngTable.server) {
+                    scope.$$ngTable.ajax = scope.$$ngTableOptions.ajax;
+                }
+                else {
+                    if (angular.isDefined(scope.$$ngTableOptions.aData))
+                        scope.$$ngTable.aData = scope.$$ngTableOptions.aData;
+                }
+                if (angular.isDefined(scope.$$ngTableOptions.placeholder)) {
+                    scope.$$ngTable.placeholder = scope.$$ngTableOptions.placeholder;
+                }
 
+                if (!scope.$$ngTable.pagination) {
+                    scope.$$ngTable.hasPerpage = false;
+                    scope.$$ngTable.perpage = "all";
+                }
+                scope.$$ngTableOptions.getSelectedRow = scope.$$ngTable.getSelectedRow;
+                scope.$$ngTableOptions.entireTableSelected = scope.$$ngTable.tableSelected;
+                scope.$$tableData = [];
+                /* check if the default sorting is enabled or not */
+                if (scope.$$ngTable.currentSortedCol != null && !scope.$$ngTable.server)
+                {
+                    /* a default sorting is specified so sort by that if it is not a server side table */
+                    scope.$$ngTable.sort();
+                }
+                else
+                {
+                    scope.$$ngTable.redrawTable();
+                }
 
+                
 
-            if (angular.isDefined(scope.server)) {
-                scope.ngTable.server = scope.server;
-            }
+            }, false)
 
-            if (angular.isDefined(scope.ajax) && scope.ngTable.server) {
-                scope.ngTable.ajax = scope.ajax;
-            }
-            else
-            {
-                if (angular.isDefined(scope.aData))
-                    scope.ngTable.aData = scope.aData;
-            }
-            if (angular.isDefined(scope.placeholder)) {
-                scope.ngTable.placeholder = scope.placeholder;
-            }
-
-            if (!scope.ngTable.pagination)
-            {
-                scope.ngTable.hasPerpage = false;
-                scope.ngTable.perpage = "all";
-            }
-            scope.tableData = [];
-
-            transclude(scope, function (clone, scope) {
-
-                element.find("table").append(clone);
+            scope.$watch("$$ngTable.tableSelected", function () {
+                scope.$$ngTableOptions.entireTableSelected = scope.$$ngTable.tableSelected;
             });
-
-            scope.ngTable.redrawTable();
-			//ex
-            
         }
     }
 }])
+.directive("ngTableCheckbox", ["$parse",function ($parse) {
+    return {
+        restrict: "A",
+        scope:true,
+        link:function(scope,element,attrs,controller)
+        {
+            var checkboxGetter = $parse(attrs.ngTableCheckbox);
+            scope.$watch(checkboxGetter, function (value) {
+                if (angular.isUndefined(value)) {
+                    return;
+                }
+
+                if (value.checked == null) value.checked = scope.$$ngTable.selectAll;
+                if (scope.$$ngTable.selectAll) value.checked = true;
+                scope.value = value;
+                element.prop("checked", scope.value.checked);
+            },true);
+
+            if (scope.checked != null) scope.checked = false;
+            element.on("click", function () {
+                scope.$parent.$apply(function () {
+                    scope.value.checked = !scope.value.checked;
+                    scope.$$ngTable.toggleCheckbox();
+                });
+            });
+        }
+    }
+}])
+.directive("ngTableMainCheckbox", [function () {
+    return {
+        restrict: "A",
+        scope:true,
+        link:function(scope,element,attrs,controller)
+        {
+            scope.$watch("$$ngTable.selectAll", function () {
+
+                element.prop("checked", scope.$$ngTable.selectAll);
+            });
+
+            element.on("click", function () {
+                scope.$parent.$apply(function () {
+                    scope.$$ngTable.toggleMainCheckbox();
+                });
+            });
+        }
+    }
+}])
+.directive("ngTableSortable", [function () {
+    return {
+        restrict: "A",
+        scope: true,
+        link: function (scope, element, attrs, controller) {
+           
+            element.on("click", function () {
+                scope.$parent.$apply(function () {
+                    scope.$$ngTable.toggleSorting(element);
+                });
+            });
+        }
+    }
+}]);
+
+
+angular.module("demo",["simpleNgTable"]).controller("tableDemo",["$scope",function($scope){
+
+
+ $scope.test = "abhi";
+    $scope.testFunction = function (a) {
+
+        return a;
+    };
+	
+	$scope.data = [
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" },
+                    { name: "abhishek" },
+                    { name: "angular" },
+                    { name: "angular2X" }
+    ];
+    $scope.datatableParam = {
+        aData: $scope.data
+    }
+
+
+
+}]);
